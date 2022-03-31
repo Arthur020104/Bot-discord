@@ -38,4 +38,4 @@ class MyClient(discord.Client):
                     PAULADAS[word] += 1
                     await message.channel.send(f'{paulada[random.randrange(0, len(paulada))]}{os.linesep}O {word} vem acumulando {PAULADAS[word]} pauladas.')
 client = MyClient()
-client.run('OTU5MDUwMDY3MTA3NTMyODAw.YkWO-g.ow_KHsXFOPVQpK5PBhW0lw09pN4')
+client.run('OTU5MDUwMDY3MTA3NTMyODAw.YkWO-g.20AJ1d1o3tqBgg6-2NQHJRVAKvc')

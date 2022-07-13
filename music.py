@@ -1,16 +1,31 @@
-from unittest import skip
 import discord
 from discord.ext import commands
 import youtube_dl
 from discord import FFmpegOpusAudio
 import urllib.request
 import re
-import time
+#import time
 playlist = []
 class music(commands.Cog):
     def __init__(self,client):
         self.client = client
-    
+    @commands.command()
+    async def among(self,ctx,code,vezes):
+        if not vezes:
+            vezes = 1
+        if len(code) != 6 or False in [False if letra.isdigit() else True for letra in code]:
+            await ctx.send("O código que vc digitou nao é válido.")
+            return
+        try:
+            vezes = int(vezes)
+        except:
+            return
+        for i in range(vezes):
+            x = '.\n'.join(code)
+            await ctx.send("Código do amonguinho.\n"+x, tts=True)
+            #for letra in code:
+            #    time.sleep(1)
+            #    await ctx.send(f"{letra}", tts=True)
     @commands.command()
     async def join(self,ctx):
         if ctx.author.voice is None:
@@ -110,6 +125,7 @@ async def toca(ctx,*args):
     url = 'https://www.youtube.com/watch'+ids
     with youtube_dl.YoutubeDL(YDL_OPTIONS) as ydl:
         info = ydl.extract_info(url,download=False)
+        print(url)
         url2 = info['formats'][0]['url']
         source = await discord.FFmpegOpusAudio.from_probe(url2,**FFMPEG_OPTIONS)
         playlist.pop(0)

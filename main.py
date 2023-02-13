@@ -7,6 +7,7 @@ import openai
 import gc
 import asyncio
 import time
+import os
 
 client = commands.Bot(command_prefix = '.', intents=discord.Intents.all())
 #y = "Use essa conversa anterior da pessoa como base nas suas respostas:O comando '.play' seguido do nome de uma música toca essa música. Por exemplo, você pode usar o comando '.play Imagine Dragons - Enemy' sem aspas e sem prefixo para reproduzir a música 'Imagine Dragons - Enemy'. Lembre-se de não usar aspas na sua resposta e não usar prefixo antes da sua resposta. Atualmente, este comando está implementado dentro de um bot no Discord."+")"
@@ -277,4 +278,4 @@ ytdl = youtube_dl.YoutubeDL(FFMPEG_OPTIONS)
 
 
 
-client.run("OTg5OTE2ODE3NjYzMzUyODY0.GeRuH_.cJLyV4UqT9TuaCo-AQVwaSqNuJKDaPJffOhW9Q")
+client.run(os.environ["DISCORD_TOKEN"])

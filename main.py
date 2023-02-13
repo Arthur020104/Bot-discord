@@ -278,4 +278,4 @@ ytdl = youtube_dl.YoutubeDL(FFMPEG_OPTIONS)
 
 
 
-client.run("OTg5OTE2ODE3NjYzMzUyODY0.GeRuH_.cJLyV4UqT9TuaCo-AQVwaSqNuJKDaPJffOhW9Q")
+client.run(os.environ["DISCORD_TOKEN"])

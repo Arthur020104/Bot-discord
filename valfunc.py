@@ -15,6 +15,17 @@ except sqlite3.OperationalError:
     # Cria a tabela times com os campos id, nome e link
     db.execute('''CREATE TABLE times(id INTEGER PRIMARY KEY,nome TEXT, link TEXT)''')
 
+def nomeparecido(name):
+    x = list(db.execute("SELECT * FROM times"))
+    names_list = []
+    for y in x:
+        names_list.append(y[1])
+    closest_matches = difflib.get_close_matches(name, names_list)
+    if closest_matches:
+        return closest_matches[0]
+    else:
+        return None
+
 def findlk(name):
     # Transforma o nome em minúsculo
     name = name.lower()

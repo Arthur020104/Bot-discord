@@ -71,7 +71,6 @@ async def valorantjogo(ctx, *, phrase):
         # if the date is valid, build a status string with the date info
         status = f'{date["time1"]} x {date["time2"]} dia {date["dia"]} do mês {date["mes"]} de {date["ano"]} às {date["horas"]}'
         channel = ctx.channel
-        print(status)
         response = status 
         # calls function 'openairesponse' to generate a message using the status string
         #response = await openairesponse(f'faça um anuncio desse jogo de valorant(Valorant é um jogo eletrônico multijogador de tiro em primeira pessoa) que será transmitido no canal da twitch https://www.twitch.tv/valorant_br,anuncio será feito em um server do discord entao faça formataçao apropriada, de forma simples que possa ser usado como template {status}, nao assuma nada além dasinformaçoes fornecidas',0.1)
@@ -91,17 +90,22 @@ async def valorantjogo(ctx, *, phrase):
         # if user confirms, call 'proximojogo' with the suggested name 
         if str(message.content) == "1":
             date = proximojogo(nome)
-            status = f'{date["time1"]} x {date["time2"]} dia {date["dia"]} do mês {date["mes"]} de {date["ano"]} às {date["horas"]}'
-            print(status)
-            response = status
-            # calls function 'openairesponse' to generate a message using the status string
-            #response = await openairesponse(f'faça um anuncio desse jogo de valorant(Valorant é um jogo eletrônico multijogador de tiro em primeira pessoa) que será transmitido no canal da twitch https://www.twitch.tv/valorant_br,anuncio será feito em um server do discord entao faça formataçao apropriada, de forma simples que possa ser usado como template {status}, nao assuma nada além dasinformaçoes fornecidas',0.1)
-            # sends the message to the channel where the command was called
-            await channel.send(response)
+            try:
+                if date[0] == 1:
+                    await channel.send(f"O time {phrase} não foi encontrado")
+                    return
+            except:
+                status = f'{date["time1"]} x {date["time2"]} dia {date["dia"]} do mês {date["mes"]} de {date["ano"]} às {date["horas"]}'
+                
+                response = status
+                # calls function 'openairesponse' to generate a message using the status string
+                #response = await openairesponse(f'faça um anuncio desse jogo de valorant(Valorant é um jogo eletrônico multijogador de tiro em primeira pessoa) que será transmitido no canal da twitch https://www.twitch.tv/valorant_br,anuncio será feito em um server do discord entao faça formataçao apropriada, de forma simples que possa ser usado como template {status}, nao assuma nada além dasinformaçoes fornecidas',0.1)
+                # sends the message to the channel where the command was called
+                await channel.send(response)
         else:
             # if user denies, send a message saying that the team was not found
             await channel.send(f"O time {phrase} não foi encontrado")
-    else:
+    elif h != None and (isinstance(h,list) or isinstance(h,tuple)):
         channel = ctx.channel
         await channel.send(f"Você quis dizer\n1.{h[0][2]}\n2.{h[1][2]}")
         # waits for the user to reply with 1 or 2
@@ -113,16 +117,13 @@ async def valorantjogo(ctx, *, phrase):
         # if user confirms, call 'proximojogo' with the suggested name 
         if str(message.content) == "1":
             x = str(h[0][2])
-            print(x)
             x = re.split('(\d+)',x)
-            print(x)
             if len(x) <= 3 :
                 x = str(x[1])
             
             x = (phrase.strip())+x
             date = proximojogo(x)
             status = f'{date["time1"]} x {date["time2"]} dia {date["dia"]} do mês {date["mes"]} de {date["ano"]} às {date["horas"]}'
-            print(status)
             response = status
             # calls function 'openairesponse' to generate a message using the status string
             #response = await openairesponse(f'faça um anuncio desse jogo de valorant(Valorant é um jogo eletrônico multijogador de tiro em primeira pessoa) que será transmitido no canal da twitch https://www.twitch.tv/valorant_br,anuncio será feito em um server do discord entao faça formataçao apropriada, de forma simples que possa ser usado como template {status}, nao assuma nada além dasinformaçoes fornecidas',0.1)
@@ -130,16 +131,13 @@ async def valorantjogo(ctx, *, phrase):
             await channel.send(response)
         else:
             x = str(h[1][2])
-            print(x)
             x = re.split('(\d+)',x)
-            print(x)
             if len(x) <= 3 :
                 x = str(x[1])
             
             x = (phrase.strip())+x
             date = proximojogo(x)
             status = f'{date["time1"]} x {date["time2"]} dia {date["dia"]} do mês {date["mes"]} de {date["ano"]} às {date["horas"]}'
-            print(status)
             response = status
             # calls function 'openairesponse' to generate a message using the status string
             #response = await openairesponse(f'faça um anuncio desse jogo de valorant(Valorant é um jogo eletrônico multijogador de tiro em primeira pessoa) que será transmitido no canal da twitch https://www.twitch.tv/valorant_br,anuncio será feito em um server do discord entao faça formataçao apropriada, de forma simples que possa ser usado como template {status}, nao assuma nada além dasinformaçoes fornecidas',0.1)
@@ -431,4 +429,4 @@ class YTDLSource(discord.PCMVolumeTransformer):
 ytdl = youtube_dl.YoutubeDL(FFMPEG_OPTIONS)
 
 # Inicia o bot.
-client.run("OTU5MDUwMDY3MTA3NTMyODAw.GbSM-K.YWZaylCe7ZlfnGvJtBamYfIfJoOHrHmcnWkgyk")
+client.run("key")

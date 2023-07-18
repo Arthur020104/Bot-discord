@@ -2,7 +2,7 @@ import urllib.request # Importa a biblioteca urllib.request para fazer requisiç
 import sqlite3 # Importa a biblioteca sqlite3 para lidar com o banco de dados
 import gc # Importa a biblioteca gc para coletar lixo e liberar memória
 import difflib # Importa a biblioteca difflib para encontrar strings mais próximas
-
+import re
 try:
     # Tenta se conectar ao banco de dados database_links_val.db, se ele existir
     db = sqlite3.connect(f"database_links_val.db")
@@ -28,24 +28,37 @@ def nomeparecido(name):
 
 def findlk(name):
     # Transforma o nome em minúsculo
-    name = name.lower()
-    if " " in name:
-        # Substitui os espaços por traços
-        name = name.replace(' ','-')
+    name = name.lower() if len(name) <=1 else name[0].lower
+    nome = name
+    numero=int()
+    nome =re.split('(\d+)',nome)
+    if len(nome) <= 2:
+        print(nome)
+        name = nome[0]
+        numero = int(nome[1])
     # Procura no banco de dados o nome exato
     x= list(db.execute("SELECT * FROM times WHERE nome == ?",(name.lower(),)))
+    print(x)
     id_value = None
     try:
         # Procura o último id do banco de dados
-        tamanhox = db.execute("SELECT id FROM times ORDER BY id DESC LIMIT 1")
-        id_value = int(tamanhox.fetchone()[0])
+        if len(x) > 1:
+            for time in x:
+                vlr = time[2]
+                vlr = re.split('(\d+)',vlr)
+                if len(vlr) <= 3:
+                    vlr = int(nome[1])
+                if vlr == numero:
+                    x = str(time[2])
+            return x
+        return x[2]
     except:
         id_value = None
     print(id_value)
     # Verifica se o nome exato foi encontrado no banco de dados
     for dado in x:
         if dado[1] == name:
-            return dado[2]
+            return str(dado[2])
     html =''
     link = ''
     for i in range((id_value if id_value else 0),id_value+3): 
@@ -74,6 +87,8 @@ def findlk(name):
 def proximojogo(name):
     # chama a função findlk para encontrar o link da página do time
     teste = findlk(name)
+    if len(teste) > 1 and not isinstance(teste, str):
+        return 2,teste
     if teste == 1:
         return 1
     # abre a página do time e lê o código fonte
@@ -106,15 +121,18 @@ def proximojogo(name):
     time_st = data_end+len('</div>')+1
     time_end = html.find('m',time_st)+1
     horas = html[time_st:time_end].strip()
+    
     print(horas)
 
     # ajusta a hora para o fuso horário correto
     if horas.find('pm') == -1:
-        horas = str((int(horas[0:(horas.find(':'))])+2 )if horas[0:(horas.find(':'))] !=12 else "02")+str(horas[horas.find(":"):horas.find('m')-1])
+        horas = str((int(horas[0:(horas.find(':'))]) )if horas[0:(horas.find(':'))] !=12 else "02")+str(horas[horas.find(":"):horas.find('m')-1])
     else:
         x = int(horas[0:(horas.find(':'))])+(12 if int(horas[0:(horas.find(':'))]) != 12 else 0)
-        horas = str(((x + 2) if x+2< 24 else (x+2)%24))+str(horas[horas.find(":"):horas.find('m')-1])
-
+        horas = str(((x ) if x+2< 24 else (x)%24))+str(horas[horas.find(":"):horas.find('m')-1])
+    print(horas)
+    if horas.strip() == '12:00':
+        horas = '00:00'
     # cria um dicionário com as informações do jogo e retorna
     date= {'time1':time1,'time2':time2,'dia':data[2],'mes':data[1],'ano':data[0],'horas': horas}
     return date

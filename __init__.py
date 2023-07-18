@@ -8,21 +8,22 @@ import gc
 import asyncio
 import time
 import os
-from valfunc import findlk, proximojogo, nomeparecido
+from teste import findlk, proximojogo, nomeparecido
 import pytz
 import datetime
 
 # Create a new client instance with the specified command prefix and intents
 client = commands.Bot(command_prefix='.', intents=discord.Intents.all())
 y = ""
+done = 0
+times = ['sentinels', 'furia', 'mibr', 'loud']
+channel = client.get_channel(858555677671817217)
 
 # A command to check Brazilian Valorant teams' upcoming matches
 @client.command()
 async def brgames(ctx):
     global done
-    done = 0
-    times = ['sentinels', 'furia', 'mibr', 'loud']
-    channel = client.get_channel(858555677671817217)
+    
     # Get the timezone for Brazil
     br_tz = pytz.timezone('America/Sao_Paulo')
     
@@ -36,48 +37,44 @@ async def brgames(ctx):
         tempo = []
 
         for time in times:
-            #print(horas, (int(date["horas"][0:(date["horas"].find(":"))])), '\n\n\n\n',((int(date["horas"][0:int(date["horas"].find(":"))])) - horas))
             date = proximojogo(time)
-            if date == "Sem partidas novas":
-                continue
-            difhour = ((int(date["horas"][0:int(date["horas"].find(":"))])) - horas)
+            difhour = ((int(date["horas"][0:(date["horas"].find(":"))])) - horas)
             tempo.append((difhour-1) if (mes == int(date['mes']) and (dia == int(date['dia']))) else 1)
-            print("Horas:",horas, (int(date["horas"][0:(date["horas"].find(":"))]),"|Diffhour",difhour))
-            print("Mes:",mes , int(date['mes']),"|Dia:", (dia , int(date['dia'])), '\n\n\n\n')
+            print(horas, (int(date["horas"][0:(date["horas"].find(":"))])), '\n\n\n\n')
+
             # Check if the match is happening today and within the next hour
-            if mes == int(date['mes']) and (dia == int(date['dia'])) and (difhour == 1):
+            if mes == int(date['mes']) and (dia == int(date['dia'])) and (difhour < 1 and difhour >= 0):
+                done = 1
                 status = f'{date["time1"]} x {date["time2"]} dia {date["dia"]} do mês {date["mes"]} de {date["ano"]} às {date["horas"]}'
                 
                 # Create an allowed_mentions object to mention everyone in the server
                 allowed_mentions = discord.AllowedMentions(everyone=True)
                 
                 # Use OpenAI API to generate an announcement message and send it to the specified channel
-                response = await openairesponse(f'faça um anuncio desse jogo de valorant(Valorant é um jogo eletrônico multijogador de tiro em primeira pessoa) que será transmitido no canal da twitch https://www.twitch.tv/valorant_br,anuncio será feito em um server do discord entao faça formataçao apropriada, de forma simples que possa ser usado como template {status}, nao assuma nada além dasinformaçoes fornecidas', 0.1)
-                response = str(response["choices"][0]["text"])
-                await channel.send("@everyone" + response, allowed_mentions=allowed_mentions)
+                response = openairesponse(f'faça um anuncio desse jogo de valorant(Valorant é um jogo eletrônico multijogador de tiro em primeira pessoa) que será transmitido no canal da twitch https://www.twitch.tv/valorant_br,anuncio será feito em um server do discord entao faça formataçao apropriada, de forma simples que possa ser usado como template {status}, nao assuma nada além dasinformaçoes fornecidas', 0.1)
+                await channel.send("@everyone" + response["choices"][0]["text"], allowed_mentions=allowed_mentions)
                 
-        
-        await asyncio.sleep(1800)
-        done = 0
-        # Wait until 1 hour is left for the next match to start before checking again.
-        #if done == 1:
-        #    await asyncio.sleep((min(tempo) * 60) * 60)
+        # Wait for an hour before checking again
+        if done == 1:
+            await asyncio.sleep(3600)
+            done = 0
+        # Wait for the time until the next match starts before checking again
+        await asyncio.sleep((min(tempo) * 60) * 60)
 @client.command()
 async def valorantjogo(ctx, *, phrase):
     # calls function 'proximojogo' to get the date of the next game
-    date,h = proximojogo((phrase.strip()))
+    date = proximojogo(phrase)
     status = ''
-    if not isinstance(date, int):
+    if date != 1:
         # if the date is valid, build a status string with the date info
         status = f'{date["time1"]} x {date["time2"]} dia {date["dia"]} do mês {date["mes"]} de {date["ano"]} às {date["horas"]}'
         channel = ctx.channel
         print(status)
-        response = status 
         # calls function 'openairesponse' to generate a message using the status string
-        #response = await openairesponse(f'faça um anuncio desse jogo de valorant(Valorant é um jogo eletrônico multijogador de tiro em primeira pessoa) que será transmitido no canal da twitch https://www.twitch.tv/valorant_br,anuncio será feito em um server do discord entao faça formataçao apropriada, de forma simples que possa ser usado como template {status}, nao assuma nada além dasinformaçoes fornecidas',0.1)
+        response = openairesponse(f'faça um anuncio desse jogo de valorant(Valorant é um jogo eletrônico multijogador de tiro em primeira pessoa) que será transmitido no canal da twitch https://www.twitch.tv/valorant_br,anuncio será feito em um server do discord entao faça formataçao apropriada, de forma simples que possa ser usado como template {status}, nao assuma nada além dasinformaçoes fornecidas',0.1)
         # sends the message to the channel where the command was called
-        await channel.send(response)
-    elif date ==1:
+        await channel.send(response["choices"][0]["text"])
+    else:
         # if the date is invalid, suggest a similar name and ask for confirmation
         channel = ctx.channel
         nome = nomeparecido(phrase)
@@ -88,74 +85,30 @@ async def valorantjogo(ctx, *, phrase):
         user_response = await client.wait_for('message', check=check)
         channel = client.get_channel((user_response.channel).id)
         message = await channel.fetch_message(user_response.id)
-        # if user confirms, call 'proximojogo' with the suggested name 
+        # if user confirms, call 'proximojogo' with the suggested name and build the status string
         if str(message.content) == "1":
             date = proximojogo(nome)
             status = f'{date["time1"]} x {date["time2"]} dia {date["dia"]} do mês {date["mes"]} de {date["ano"]} às {date["horas"]}'
             print(status)
-            response = status
             # calls function 'openairesponse' to generate a message using the status string
-            #response = await openairesponse(f'faça um anuncio desse jogo de valorant(Valorant é um jogo eletrônico multijogador de tiro em primeira pessoa) que será transmitido no canal da twitch https://www.twitch.tv/valorant_br,anuncio será feito em um server do discord entao faça formataçao apropriada, de forma simples que possa ser usado como template {status}, nao assuma nada além dasinformaçoes fornecidas',0.1)
+            response = openairesponse(f'faça um anuncio desse jogo de valorant(Valorant é um jogo eletrônico multijogador de tiro em primeira pessoa) que será transmitido no canal da twitch https://www.twitch.tv/valorant_br,anuncio será feito em um server do discord entao faça formataçao apropriada, de forma simples que possa ser usado como template {status}, nao assuma nada além dasinformaçoes fornecidas',0.1)
             # sends the message to the channel where the command was called
-            await channel.send(response)
+            await channel.send(response["choices"][0]["text"])
         else:
             # if user denies, send a message saying that the team was not found
             await channel.send(f"O time {phrase} não foi encontrado")
-    else:
-        channel = ctx.channel
-        await channel.send(f"Você quis dizer\n1.{h[0][2]}\n2.{h[1][2]}")
-        # waits for the user to reply with 1 or 2
-        def check(message):
-            return message.author == ctx.author and message.channel == ctx.channel
-        user_response = await client.wait_for('message', check=check)
-        channel = client.get_channel((user_response.channel).id)
-        message = await channel.fetch_message(user_response.id)
-        # if user confirms, call 'proximojogo' with the suggested name 
-        if str(message.content) == "1":
-            x = str(h[0][2])
-            print(x)
-            x = re.split('(\d+)',x)
-            print(x)
-            if len(x) <= 3 :
-                x = str(x[1])
-            
-            x = (phrase.strip())+x
-            date = proximojogo(x)
-            status = f'{date["time1"]} x {date["time2"]} dia {date["dia"]} do mês {date["mes"]} de {date["ano"]} às {date["horas"]}'
-            print(status)
-            response = status
-            # calls function 'openairesponse' to generate a message using the status string
-            #response = await openairesponse(f'faça um anuncio desse jogo de valorant(Valorant é um jogo eletrônico multijogador de tiro em primeira pessoa) que será transmitido no canal da twitch https://www.twitch.tv/valorant_br,anuncio será feito em um server do discord entao faça formataçao apropriada, de forma simples que possa ser usado como template {status}, nao assuma nada além dasinformaçoes fornecidas',0.1)
-            # sends the message to the channel where the command was called
-            await channel.send(response)
-        else:
-            x = str(h[1][2])
-            print(x)
-            x = re.split('(\d+)',x)
-            print(x)
-            if len(x) <= 3 :
-                x = str(x[1])
-            
-            x = (phrase.strip())+x
-            date = proximojogo(x)
-            status = f'{date["time1"]} x {date["time2"]} dia {date["dia"]} do mês {date["mes"]} de {date["ano"]} às {date["horas"]}'
-            print(status)
-            response = status
-            # calls function 'openairesponse' to generate a message using the status string
-            #response = await openairesponse(f'faça um anuncio desse jogo de valorant(Valorant é um jogo eletrônico multijogador de tiro em primeira pessoa) que será transmitido no canal da twitch https://www.twitch.tv/valorant_br,anuncio será feito em um server do discord entao faça formataçao apropriada, de forma simples que possa ser usado como template {status}, nao assuma nada além dasinformaçoes fornecidas',0.1)
-            # sends the message to the channel where the command was called
-            await channel.send(response)
-async def openairesponse(prompt, temp=0.9):
+def openairesponse(prompt, temp=0.9):
     # Function that sends a request to OpenAI's API to generate text.
+    # The generated text will be a response to a given prompt.
     response = openai.Completion.create(
-        model="text-davinci-003", 
-        prompt=prompt,  
+        model="text-davinci-003",  # Specify the OpenAI model to use for text generation.
+        prompt=prompt,  # Provide the prompt for which to generate a response.
         temperature=temp,  # Set the temperature parameter for the text generation.
-        max_tokens=1000, 
-        top_p=1,  
-        logprobs=1, 
-        frequency_penalty=0,  
-        presence_penalty=0.6, 
+        max_tokens=1000,  # Set the maximum number of tokens the API can return.
+        top_p=1,  # Set the sampling algorithm for tokens.
+        logprobs=1,  # Include log probabilities of each token to allow re-ranking.
+        frequency_penalty=0,  # Set the frequency penalty for the text generation.
+        presence_penalty=0.6,  # Set the presence penalty for the text generation.
         api_key="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",  # The API key for OpenAI's API.
         stop=[" Human:", " AI"]  # Set the stop sequence for text generation.
     )
@@ -170,14 +123,13 @@ async def pt(ctx, *, phrase):
         y = y[1000:len(y)]
     x = phrase
     y = y + "Pessoa:'" + x + "'"
-    response = await openairesponse(y)
+    response = openairesponse(y)
     y = y + "Resposta do bot:'" + response['choices'][0]['text'] + "'"
     channel = ctx.channel
     await channel.send(response["choices"][0]["text"])
     print(response["choices"][0]["finish_reason"])
     if response["choices"][0]["finish_reason"] == "length":
         await channel.send("Essa resposta foi limitada pela quantidade de tokens.")
-    #If the bot suggests playing a song, the play function is called to play the suggested song.
     if ".play" in response["choices"][0]["text"]:
         index = (response["choices"][0]["text"].find(".play")) + 5
         strin = (response["choices"][0]["text"][index:len(response["choices"][0]["text"])])
@@ -226,7 +178,7 @@ players = []
 @client.command()
 async def play(ctx, *args):
     global players
-    print(players)
+    print(players) # Exibe a lista de músicas na console.
 
     # Verifica se o bot já está conectado em algum canal de voz do servidor.
     if is_connected(ctx) == False:
@@ -325,7 +277,7 @@ async def skip(ctx):
 # Comando para alterar o apelido de um membro do servidor
 @client.command(pass_context=True)
 async def chnick(ctx, member: discord.Member, nick):
-    print(ctx.message.guild.name)
+    print(ctx.message.guild.name)  # exibe o nome do servidor na qual o comando foi executado
     await member.edit(nick=nick)   # altera o apelido do membro para o novo apelido especificado no comando
 
 # Comando para obter a lista de membros de um servidor
@@ -382,7 +334,7 @@ async def dinamicn(ctx, member, displaynome):
         await member.edit(nick=f"{displaynome[x]}")
         await asyncio.sleep(2)
 
-        # Verifica se a flag A é 1 , se for, sai do loop.
+        # Verifica se a flag A é 1 (true), se for, sai do loop.
         if A == 1:
             return
 
@@ -392,16 +344,13 @@ async def dinamicn(ctx, member, displaynome):
             x = 0
             continue
         x += 1
-        
-@client.command()
-async def comandos(ctx):
-    channel = ctx.channel
-    response = await openairesponse("1.valorantjogo <NomedoTime> - Comando que verifica a data e hora do próximo jogo de Valorant de uma equipe específica.\n2.Para usar o comando de conversação do bot, digite '.pt' seguido de uma frase ou pergunta que você deseja que o bot responda.\n3.Para usar o comando de conexão do bot ao canal de voz, digite '.join'.\n4.Para usar o comando de desconexão do bot do canal de voz, digite '.leave'\n5.No servidor, digite no chat o prefixo '.' seguido do comando 'play' e o nome da música que deseja tocar, por exemplo: .play never gonna give you up\n6. O '.skip' é responsável por pular para a próxima música da fila de reprodução no canal de voz do Discord.\n7.O 'chnick' é responsável por alterar o apelido de um membro do servidor.\n8.O comando 'resetnomes' é responsável por redefinir o apelido de todos os membros de um servidor.")
-    await channel.send(response["choices"][0]["text"])
+
 @client.command()
 async def clear(ctx, number: int):
+    # Incrementa o valor de number em 1.
     number +=1
 
+    # Verifica se o valor de number é maior que 19.
     if number > 19:
         # Divide o valor de number pelo número inteiro da divisão de number por 10.
         res = int(number / int(number/10))
@@ -431,4 +380,6 @@ class YTDLSource(discord.PCMVolumeTransformer):
 ytdl = youtube_dl.YoutubeDL(FFMPEG_OPTIONS)
 
 # Inicia o bot.
-client.run("OTU5MDUwMDY3MTA3NTMyODAw.GbSM-K.YWZaylCe7ZlfnGvJtBamYfIfJoOHrHmcnWkgyk")
+client.run("OTg5OTE2ODE3NjYzMzUyODY0.Glxb65.uLKbJLPme-YiVQXg6vWoD4z7yrEOiA5lzOgCnU")
+
+

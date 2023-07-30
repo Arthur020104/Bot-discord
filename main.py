@@ -37,7 +37,7 @@ async def brgames(ctx):
 
         for time in times:
             #print(horas, (int(date["horas"][0:(date["horas"].find(":"))])), '\n\n\n\n',((int(date["horas"][0:int(date["horas"].find(":"))])) - horas))
-            date = proximojogo(time)
+            date,h = proximojogo(time)
             if date == "Sem partidas novas":
                 continue
             difhour = ((int(date["horas"][0:int(date["horas"].find(":"))])) - horas)
@@ -67,7 +67,7 @@ async def valorantjogo(ctx, *, phrase):
     # calls function 'proximojogo' to get the date of the next game
     date,h = proximojogo((phrase.strip()))
     status = ''
-    if not isinstance(date, int):
+    if isinstance(date, dict) :
         # if the date is valid, build a status string with the date info
         status = f'{date["time1"]} x {date["time2"]} dia {date["dia"]} do mês {date["mes"]} de {date["ano"]} às {date["horas"]}'
         channel = ctx.channel
@@ -76,6 +76,7 @@ async def valorantjogo(ctx, *, phrase):
         #response = await openairesponse(f'faça um anuncio desse jogo de valorant(Valorant é um jogo eletrônico multijogador de tiro em primeira pessoa) que será transmitido no canal da twitch https://www.twitch.tv/valorant_br,anuncio será feito em um server do discord entao faça formataçao apropriada, de forma simples que possa ser usado como template {status}, nao assuma nada além dasinformaçoes fornecidas',0.1)
         # sends the message to the channel where the command was called
         await channel.send(response)
+        return
     elif date ==1:
         # if the date is invalid, suggest a similar name and ask for confirmation
         channel = ctx.channel
@@ -89,22 +90,22 @@ async def valorantjogo(ctx, *, phrase):
         message = await channel.fetch_message(user_response.id)
         # if user confirms, call 'proximojogo' with the suggested name 
         if str(message.content) == "1":
-            date = proximojogo(nome)
+            date,h = proximojogo(nome.strip())
             try:
-                if date[0] == 1:
-                    await channel.send(f"O time {phrase} não foi encontrado")
-                    return
-            except:
                 status = f'{date["time1"]} x {date["time2"]} dia {date["dia"]} do mês {date["mes"]} de {date["ano"]} às {date["horas"]}'
+            except:
+                status = f"O time {phrase} não foi encontrado"
                 
-                response = status
-                # calls function 'openairesponse' to generate a message using the status string
-                #response = await openairesponse(f'faça um anuncio desse jogo de valorant(Valorant é um jogo eletrônico multijogador de tiro em primeira pessoa) que será transmitido no canal da twitch https://www.twitch.tv/valorant_br,anuncio será feito em um server do discord entao faça formataçao apropriada, de forma simples que possa ser usado como template {status}, nao assuma nada além dasinformaçoes fornecidas',0.1)
-                # sends the message to the channel where the command was called
-                await channel.send(response)
+            response = status
+            # calls function 'openairesponse' to generate a message using the status string
+            #response = await openairesponse(f'faça um anuncio desse jogo de valorant(Valorant é um jogo eletrônico multijogador de tiro em primeira pessoa) que será transmitido no canal da twitch https://www.twitch.tv/valorant_br,anuncio será feito em um server do discord entao faça formataçao apropriada, de forma simples que possa ser usado como template {status}, nao assuma nada além dasinformaçoes fornecidas',0.1)
+            # sends the message to the channel where the command was called
+            await channel.send(response)
+            return
         else:
             # if user denies, send a message saying that the team was not found
             await channel.send(f"O time {phrase} não foi encontrado")
+            return
     elif h != None and (isinstance(h,list) or isinstance(h,tuple)):
         channel = ctx.channel
         await channel.send(f"Você quis dizer\n1.{h[0][2]}\n2.{h[1][2]}")
@@ -122,13 +123,14 @@ async def valorantjogo(ctx, *, phrase):
                 x = str(x[1])
             
             x = (phrase.strip())+x
-            date = proximojogo(x)
+            date,h = proximojogo(x)
             status = f'{date["time1"]} x {date["time2"]} dia {date["dia"]} do mês {date["mes"]} de {date["ano"]} às {date["horas"]}'
             response = status
             # calls function 'openairesponse' to generate a message using the status string
             #response = await openairesponse(f'faça um anuncio desse jogo de valorant(Valorant é um jogo eletrônico multijogador de tiro em primeira pessoa) que será transmitido no canal da twitch https://www.twitch.tv/valorant_br,anuncio será feito em um server do discord entao faça formataçao apropriada, de forma simples que possa ser usado como template {status}, nao assuma nada além dasinformaçoes fornecidas',0.1)
             # sends the message to the channel where the command was called
             await channel.send(response)
+            return
         else:
             x = str(h[1][2])
             x = re.split('(\d+)',x)
@@ -136,13 +138,18 @@ async def valorantjogo(ctx, *, phrase):
                 x = str(x[1])
             
             x = (phrase.strip())+x
-            date = proximojogo(x)
+            date,h = proximojogo(x)
             status = f'{date["time1"]} x {date["time2"]} dia {date["dia"]} do mês {date["mes"]} de {date["ano"]} às {date["horas"]}'
             response = status
             # calls function 'openairesponse' to generate a message using the status string
             #response = await openairesponse(f'faça um anuncio desse jogo de valorant(Valorant é um jogo eletrônico multijogador de tiro em primeira pessoa) que será transmitido no canal da twitch https://www.twitch.tv/valorant_br,anuncio será feito em um server do discord entao faça formataçao apropriada, de forma simples que possa ser usado como template {status}, nao assuma nada além dasinformaçoes fornecidas',0.1)
             # sends the message to the channel where the command was called
             await channel.send(response)
+            return
+    else:
+        channel = ctx.channel
+        await channel.send(date)
+        return
 async def openairesponse(prompt, temp=0.9):
     # Function that sends a request to OpenAI's API to generate text.
     response = openai.Completion.create(

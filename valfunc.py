@@ -72,7 +72,7 @@ def findlk(name):
     html =''
     link = ''
     id_value = id_value+1 if id_value else 0
-    for i in range(id_value,id_value+15000): 
+    for i in range(id_value,id_value+3): 
         try:
             # Faz uma requisição HTTP para o site https://www.vlr.gg/team/ com o id atual
             html = urllib.request.urlopen(f"https://www.vlr.gg/team/{i}/")
@@ -84,6 +84,7 @@ def findlk(name):
             nome = html[st:end]
             #pdb.set_trace()
             if html :
+                print(nome)
                 #pdb.set_trace()
                 # Insere o nome e link no banco de dados
                 db.execute("INSERT INTO times(nome,link,page_id) VALUES(?, ?, ?)",(nome.lower(), link, i))
@@ -111,7 +112,7 @@ def proximojogo(name):
     # procura a seção com os próximos jogos
     num = html.find("Upcoming matches")
     if num == -1:
-        return "Sem partidas novas"
+        return "Sem partidas novas",None
 
     # procura os nomes dos times do próximo jogo
     stri = '<span class="m-item-team-name">'

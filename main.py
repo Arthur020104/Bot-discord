@@ -17,51 +17,47 @@ client = commands.Bot(command_prefix='.', intents=discord.Intents.all())
 y = ""
 
 # A command to check Brazilian Valorant teams' upcoming matches
-@client.command()
-async def brgames(ctx):
+#@client.command()
+async def brgames():
     global done
     done = 0
     times = ['sentinels', 'furia', 'mibr', 'loud']
     channel = client.get_channel(858555677671817217)
-    # Get the timezone for Brazil
-    br_tz = pytz.timezone('America/Sao_Paulo')
+    br_timezone = pytz.timezone('America/Sao_Paulo')
     
     while True:
-        # Get the current date and time in the Brazil timezone
-        now = datetime.datetime.now(tz=br_tz)
+        now = datetime.datetime.now(tz=br_timezone)
         horas = (int(now.hour))
         horas = horas % 24 if ((int(now.hour))) >= 24 else horas
         dia = (int(now.day))
         mes = (int(now.month))
         tempo = []
-
+        difhoras = ((int(date["horas"][0:int(date["horas"].find(":"))])) - horas)
         for time in times:
-            #print(horas, (int(date["horas"][0:(date["horas"].find(":"))])), '\n\n\n\n',((int(date["horas"][0:int(date["horas"].find(":"))])) - horas))
             date,h = proximojogo(time)
             if date == "Sem partidas novas":
                 continue
-            difhour = ((int(date["horas"][0:int(date["horas"].find(":"))])) - horas)
-            tempo.append((difhour-1) if (mes == int(date['mes']) and (dia == int(date['dia']))) else 1)
-            print("Horas:",horas, (int(date["horas"][0:(date["horas"].find(":"))]),"|Diffhour",difhour))
+            
+            tempo.append((difhoras-1) if (mes == int(date['mes']) and (dia == int(date['dia']))) else 1)
+
+            print("Horas:",horas, (int(date["horas"][0:(date["horas"].find(":"))]),"|Diffhour",difhoras))
             print("Mes:",mes , int(date['mes']),"|Dia:", (dia , int(date['dia'])), '\n\n\n\n')
+
             # Check if the match is happening today and within the next hour
-            if mes == int(date['mes']) and (dia == int(date['dia'])) and (difhour == 1):
+            if mes == int(date['mes']) and (dia == int(date['dia'])) and (difhoras == 1):
                 status = f'{date["time1"]} x {date["time2"]} dia {date["dia"]} do mês {date["mes"]} de {date["ano"]} às {date["horas"]}'
                 
-                # Create an allowed_mentions object to mention everyone in the server
                 allowed_mentions = discord.AllowedMentions(everyone=True)
                 
-                # Use OpenAI API to generate an announcement message and send it to the specified channel
-                response = await openairesponse(f'faça um anuncio desse jogo de valorant(Valorant é um jogo eletrônico multijogador de tiro em primeira pessoa) que será transmitido no canal da twitch https://www.twitch.tv/valorant_br,anuncio será feito em um server do discord entao faça formataçao apropriada, de forma simples que possa ser usado como template {status}, nao assuma nada além dasinformaçoes fornecidas', 0.1)
-                response = str(response["choices"][0]["text"])
-                await channel.send("@everyone" + response, allowed_mentions=allowed_mentions)
+                await channel.send("@everyone" + status, allowed_mentions=allowed_mentions)
                 
         
-        await asyncio.sleep(1800)
+        await asyncio.sleep((difhoras*360/1.3) if difhoras > 2 else 600)
         done = 0
-        # Wait until 1 hour is left for the next match to start before checking again.
-        #if done == 1:
-        #    await asyncio.sleep((min(tempo) * 60) * 60)
+@client.event
+async def on_ready():
+    await brgames()
+
 @client.command()
 async def valorantjogo(ctx, *, phrase):
     # calls function 'proximojogo' to get the date of the next game
@@ -72,9 +68,6 @@ async def valorantjogo(ctx, *, phrase):
         status = f'{date["time1"]} x {date["time2"]} dia {date["dia"]} do mês {date["mes"]} de {date["ano"]} às {date["horas"]}'
         channel = ctx.channel
         response = status 
-        # calls function 'openairesponse' to generate a message using the status string
-        #response = await openairesponse(f'faça um anuncio desse jogo de valorant(Valorant é um jogo eletrônico multijogador de tiro em primeira pessoa) que será transmitido no canal da twitch https://www.twitch.tv/valorant_br,anuncio será feito em um server do discord entao faça formataçao apropriada, de forma simples que possa ser usado como template {status}, nao assuma nada além dasinformaçoes fornecidas',0.1)
-        # sends the message to the channel where the command was called
         await channel.send(response)
         return
     elif date ==1:
@@ -97,9 +90,6 @@ async def valorantjogo(ctx, *, phrase):
                 status = f"O time {phrase} não foi encontrado"
                 
             response = status
-            # calls function 'openairesponse' to generate a message using the status string
-            #response = await openairesponse(f'faça um anuncio desse jogo de valorant(Valorant é um jogo eletrônico multijogador de tiro em primeira pessoa) que será transmitido no canal da twitch https://www.twitch.tv/valorant_br,anuncio será feito em um server do discord entao faça formataçao apropriada, de forma simples que possa ser usado como template {status}, nao assuma nada além dasinformaçoes fornecidas',0.1)
-            # sends the message to the channel where the command was called
             await channel.send(response)
             return
         else:
@@ -126,9 +116,6 @@ async def valorantjogo(ctx, *, phrase):
             date,h = proximojogo(x)
             status = f'{date["time1"]} x {date["time2"]} dia {date["dia"]} do mês {date["mes"]} de {date["ano"]} às {date["horas"]}'
             response = status
-            # calls function 'openairesponse' to generate a message using the status string
-            #response = await openairesponse(f'faça um anuncio desse jogo de valorant(Valorant é um jogo eletrônico multijogador de tiro em primeira pessoa) que será transmitido no canal da twitch https://www.twitch.tv/valorant_br,anuncio será feito em um server do discord entao faça formataçao apropriada, de forma simples que possa ser usado como template {status}, nao assuma nada além dasinformaçoes fornecidas',0.1)
-            # sends the message to the channel where the command was called
             await channel.send(response)
             return
         else:
@@ -141,9 +128,6 @@ async def valorantjogo(ctx, *, phrase):
             date,h = proximojogo(x)
             status = f'{date["time1"]} x {date["time2"]} dia {date["dia"]} do mês {date["mes"]} de {date["ano"]} às {date["horas"]}'
             response = status
-            # calls function 'openairesponse' to generate a message using the status string
-            #response = await openairesponse(f'faça um anuncio desse jogo de valorant(Valorant é um jogo eletrônico multijogador de tiro em primeira pessoa) que será transmitido no canal da twitch https://www.twitch.tv/valorant_br,anuncio será feito em um server do discord entao faça formataçao apropriada, de forma simples que possa ser usado como template {status}, nao assuma nada além dasinformaçoes fornecidas',0.1)
-            # sends the message to the channel where the command was called
             await channel.send(response)
             return
     else:
@@ -161,7 +145,7 @@ async def openairesponse(prompt, temp=0.9):
         logprobs=1, 
         frequency_penalty=0,  
         presence_penalty=0.6, 
-        api_key="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",  # The API key for OpenAI's API.
+        api_key="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",  # The API key for OpenAI's API.
         stop=[" Human:", " AI"]  # Set the stop sequence for text generation.
     )
     return response
@@ -195,11 +179,11 @@ async def pt(ctx, *, phrase):
         gc.collect()
         return
 
-
 def is_connected(ctx):
     # Function that checks if the bot is connected to a voice channel.
     voice_client = discord.utils.get(client.voice_clients, guild=ctx.guild)
     return voice_client and voice_client.is_connected()
+
 
 
 # Options for playing audio using FFmpeg and YouTube DL.
@@ -230,17 +214,12 @@ global players
 players = []
 @client.command()
 async def play(ctx, *args):
-    global players
-    print(players)
-
-    # Verifica se o bot já está conectado em algum canal de voz do servidor.
-    if is_connected(ctx) == False:
-        server = ctx.guild.voice_client
-
     if args: # Se foram passados argumentos para o comando, inicia a busca do vídeo no YouTube.
-        if is_connected(ctx) == False: # Verifica se o bot já está conectado em algum canal de voz do servidor.
+        if is_connected(ctx): # Verifica se o bot já está conectado em algum canal de voz do servidor.
             server = ctx.guild.voice_client
-
+        else:
+            channel = ctx.author.voice.channel
+            server = await channel.connect()
         video_name = '' # Define uma string vazia que armazenará o nome do vídeo pesquisado.
         count = 0 # Define um contador para percorrer a lista de argumentos passados.
 
@@ -271,8 +250,7 @@ async def play(ctx, *args):
 
         # Se for a primeira música da lista, conecta no canal de voz e começa a tocá-la.
         if len(players) == 1:
-            channel = ctx.author.voice.channel
-            server = await channel.connect()
+           
             print("player",players,"Len",len(players))
             await ctx.send(f"Tocando {players[0]['info']}")
             server.play(await discord.FFmpegOpusAudio.from_probe(players[0]['player'],**FFMPEG_OPTIONS), after=lambda e: print('Player error: %s' % e) if e else loop.create_task(play(ctx)) if len(players)!=0 else leave(ctx))
@@ -293,7 +271,7 @@ async def play(ctx, *args):
     # Se não foram passados argumentos e há músicas na lista de reprodução
     elif len(players) > 0:
     # Remove a primeira música da lista de players
-        if len(players) > 0:
+        if len(players) > 1:
             players.pop(0)
         else:
             print(players)
@@ -303,12 +281,13 @@ async def play(ctx, *args):
         await ctx.send(f"Tocando {players[0]['info']}")
         channel = ctx.author.voice.channel
         server = ctx.guild.voice_client
+        loop = asyncio.get_event_loop()
         try:
-            server.play(await discord.FFmpegOpusAudio.from_probe(players[0]['player'],**FFMPEG_OPTIONS), after=lambda e: print('Player error: %s' % e) if e else loop.create_task(play(ctx)) if len(players)!=0 else leave(ctx))
+            await server.play(await discord.FFmpegOpusAudio.from_probe(players[0]['player'],**FFMPEG_OPTIONS), after=lambda e: print('Player error: %s' % e) if e else loop.create_task(play(ctx)) if len(players)!=0 else leave(ctx))
         except :
             if players:
                 server.play(await discord.FFmpegOpusAudio.from_probe(players[0]['player'],**FFMPEG_OPTIONS), after=lambda e: print('Player error: %s' % e) if e else loop.create_task(play(ctx)) if len(players)!=0 else leave(ctx))
-        loop = asyncio.get_event_loop()
+        
     else:
         return
 # Definindo uma função para pular a música atual e tocar a próxima na fila
@@ -412,13 +391,18 @@ async def clear(ctx, number: int):
         res = int(number / int(number/10))
 
         # Loop para deletar mensagens em lotes.
-        for  i in range(int(number/10)):
-            await asyncio.sleep(1*(i) if i < 10 else 10)
+        numberOfDeletedMessages = 0
+        while numberOfDeletedMessages < number:
+            numberOfDeletedMessages += res
+            if numberOfDeletedMessages > number:
+                res = number - (numberOfDeletedMessages - res)
+                numberOfDeletedMessages = number
+            await asyncio.sleep(1 * (res))
             await ctx.channel.purge(limit=res)
 
     else:
         # Deleta as mensagens do canal.
-        await ctx.channel.purge(limit=number+1)
+        await ctx.channel.purge(limit=number)
 
 class YTDLSource(discord.PCMVolumeTransformer):
     # ...

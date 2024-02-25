@@ -1,9 +1,9 @@
 import discord
 from discord.ext import commands
-import youtube_dl as youtube_dl
+import yt_dlp as youtube_dl
 import urllib
 import re
-import openai
+from openai import OpenAI
 import gc
 import asyncio
 import time
@@ -11,6 +11,11 @@ import os
 from valfunc import findlk, proximojogo, nomeparecido
 import pytz
 import datetime
+import json
+import urllib
+from openai import ChatCompletion
+import time
+import time
 
 # Create a new client instance with the specified command prefix and intents
 client = commands.Bot(command_prefix='.', intents=discord.Intents.all())
@@ -32,7 +37,12 @@ async def brgames():
         dia = (int(now.day))
         mes = (int(now.month))
         tempo = []
-        difhoras = ((int(date["horas"][0:int(date["horas"].find(":"))])) - horas)
+        try:
+
+            difhoras = ((int(date["horas"][0:int(date["horas"].find(":"))])) - horas)
+        except:
+            await asyncio.sleep(600)
+            continue
         for time in times:
             date,h = proximojogo(time)
             if date == "Sem partidas novas":
@@ -133,51 +143,137 @@ async def valorantjogo(ctx, *, phrase):
     else:
         channel = ctx.channel
         await channel.send(date)
-        return
-async def openairesponse(prompt, temp=0.9):
-    # Function that sends a request to OpenAI's API to generate text.
-    response = openai.Completion.create(
-        model="text-davinci-003", 
-        prompt=prompt,  
-        temperature=temp,  # Set the temperature parameter for the text generation.
-        max_tokens=1000, 
-        top_p=1,  
-        logprobs=1, 
-        frequency_penalty=0,  
-        presence_penalty=0.6, 
-        api_key="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",  # The API key for OpenAI's API.
-        stop=[" Human:", " AI"]  # Set the stop sequence for text generation.
+async def openairesponse(prompt, temp=0.9, ctx=None):
+    client_ai = OpenAI(api_key=key)
+    messages = [
+        {"role": "system", "content": "Você é um assistente específico para informações sobre valorant, tente manter suas respostas curtas. Para toda pergunta se for uma continuação de uma conversa suas respostas antigas virão como Resposta do bot: e o usuário como Pessoa:. Respostas em text e não adicione prefixo na suas resposta como 'Resposta do bot:'. Se for tocar musicas o nome das musicas só podem conter characteres ascii e deve ser seguido do nome do artista {musica - artista}."},
+        {"role": "user", "content": prompt}
+    ]
+
+    tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "play",
+                "description": "Play a song for the user",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "song_name": {
+                            "type": "string",
+                            "description": "The name of the song to be played",
+                        },
+                    },
+                    "required": ["song_name"],
+                },
+                "returns": {"type": "void"},
+            },
+        }
+    ]
+
+    response = client_ai.chat.completions.create(
+        model="gpt-3.5-turbo-0125",
+        response_format={"type": "text"},
+        messages=messages,
+        tools=tools,
+        tool_choice="auto",
     )
-    return response
+
+    response_message = response.choices[0].message
+
+    print(response_message)
+    tool_calls = response_message.tool_calls
+
+    if tool_calls:
+        available_functions = {"play": play}
+        messages.append(response_message)
+
+        for tool_call in tool_calls:
+            function_call = tool_call.function
+            if function_call:
+                function_name = function_call.name
+                function_to_call = available_functions.get(function_name)
+                print(function_to_call)
+                if function_to_call:
+                    function_args = json.loads(function_call.arguments)
+                    print(function_args)
+                    # Call the play function with the song name and ctx
+                    args = [10]
+                    await asyncio.run_coroutine_threadsafe(function_to_call(ctx, song_name=function_args.get("song_name")),client.loop)
+
+
+                    messages.append(
+                        {
+                            "tool_call_id": tool_call.id,
+                            "role": "tool",
+                            "name": function_name,
+                            "content": "Yes, I can play that for you.",
+                            
+                        }
+                    )
+
+        second_response = client_ai.chat.completions.create(
+            response_format={"type": "text"},
+            model="gpt-3.5-turbo-0125",
+            messages=messages,
+        )
+
+        return second_response
+    else:
+        # Return the completion for the original prompt if tools are not called
+        return response_message.content
+
 
 
 @client.command()
 async def pt(ctx, *, phrase):
-    # A Discord bot command that takes a phrase as input and generates a response using OpenAI's API.
     global y
+
     if len(y) > 3000:
-        y = y[1000:len(y)]
+        y = y[1000:]
+
     x = phrase
-    y = y + "Pessoa:'" + x + "'"
-    response = await openairesponse(y)
-    y = y + "Resposta do bot:'" + response['choices'][0]['text'] + "'"
-    channel = ctx.channel
-    await channel.send(response["choices"][0]["text"])
-    print(response["choices"][0]["finish_reason"])
-    if response["choices"][0]["finish_reason"] == "length":
-        await channel.send("Essa resposta foi limitada pela quantidade de tokens.")
-    #If the bot suggests playing a song, the play function is called to play the suggested song.
-    if ".play" in response["choices"][0]["text"]:
-        index = (response["choices"][0]["text"].find(".play")) + 5
-        strin = (response["choices"][0]["text"][index:len(response["choices"][0]["text"])])
-        # Replace all spaces in the string with underscores.
-        strin = strin.replace(" ", "_")
-        await play(ctx, strin)  # Play the audio corresponding to the specified string.
-        del strin
-        del index
-        del ctx
-        gc.collect()
+    y += f"Pessoa:'{x}'"
+
+    response = await openairesponse(y, 0.9, ctx)
+   
+    if not isinstance(response,str):
+        response = "Tocando musica"
+        y += f"Resposta do bot:'{response}'"
         return
+    else:
+        response = str(response)
+    print(response)
+    y += f"Resposta do bot:'{response}'"
+
+    channel = ctx.channel
+
+    # Check if the response is not empty before sending
+    if response:
+        await channel.send(response)
+    else:
+        print("Warning: Attempted to send an empty message.")
+
+    # Initialize variables
+    strin, index = None, None
+
+    # Check if response is not None before checking for ".play"
+    if response and ".play" in response:
+        index = response.find(".play") + 5
+        strin = response[index:]
+        strin = strin.replace(" ", "_")
+
+        await play(ctx, strin)
+
+    # Delete variables if they are assigned
+    if strin is not None:
+        del strin
+    if index is not None:
+        del index
+    del ctx
+    gc.collect()
+
+
 
 def is_connected(ctx):
     # Function that checks if the bot is connected to a voice channel.
@@ -213,83 +309,88 @@ async def leave(ctx):
 global players
 players = []
 @client.command()
-async def play(ctx, *args):
-    if args: # Se foram passados argumentos para o comando, inicia a busca do vídeo no YouTube.
-        if is_connected(ctx): # Verifica se o bot já está conectado em algum canal de voz do servidor.
-            server = ctx.guild.voice_client
-        else:
-            channel = ctx.author.voice.channel
-            server = await channel.connect()
-        video_name = '' # Define uma string vazia que armazenará o nome do vídeo pesquisado.
-        count = 0 # Define um contador para percorrer a lista de argumentos passados.
-
-        # Concatena os argumentos passados na linha de comando em uma única string separada por '+', que será utilizada na busca do vídeo no YouTube.
-        for name in args:
-            if count != 0:
-                video_name += f'+{name}'
-            else:
-                video_name += f'{name}'
-            count +=1
-
-        html = urllib.request.urlopen('https://www.youtube.com/results?search_query='+video_name) # Realiza uma busca no YouTube com o nome do vídeo passado como argumento.
-        ids = re.findall(r"watch\s?(\S{14})",html.read().decode()) # Extrai o ID do vídeo da página de resultados da busca.
-        for id in ids:
-            if '?v=' in id:
-                ids = id
-                break
-        url = 'https://www.youtube.com/watch'+ids # Monta a URL do vídeo encontrado no YouTube.
-
-        # Obtém informações do vídeo (título, duração, etc.) utilizando o módulo YTDL.
-        info = await YTDLSource.from_url(url)
-
-        # Obtém a URL do arquivo de áudio do vídeo encontrado no YouTube.
-        url2 = info['formats'][0]['url']
-
-        # Adiciona a música encontrada na lista de músicas a serem tocadas.
-        players.append( {"player":url2,"info":info['title']})
-
-        # Se for a primeira música da lista, conecta no canal de voz e começa a tocá-la.
-        if len(players) == 1:
-           
-            print("player",players,"Len",len(players))
-            await ctx.send(f"Tocando {players[0]['info']}")
-            server.play(await discord.FFmpegOpusAudio.from_probe(players[0]['player'],**FFMPEG_OPTIONS), after=lambda e: print('Player error: %s' % e) if e else loop.create_task(play(ctx)) if len(players)!=0 else leave(ctx))
-            loop = asyncio.get_event_loop()
-
-        # Se já existem músicas na lista, adiciona a nova música na fila.
-        else:
-            await ctx.send(f"{info['title']} está na fila")
-
-        # Remove as variáveis que não são mais necessárias da memória.
-        del args
-        del info
-        del url2
-        del url
-        del video_name
-        del html
-        gc.collect()
-    # Se não foram passados argumentos e há músicas na lista de reprodução
-    elif len(players) > 0:
-    # Remove a primeira música da lista de players
-        if len(players) > 1:
-            players.pop(0)
-        else:
-            print(players)
-            return
-
-        # Toca a próxima música
-        await ctx.send(f"Tocando {players[0]['info']}")
-        channel = ctx.author.voice.channel
-        server = ctx.guild.voice_client
-        loop = asyncio.get_event_loop()
-        try:
-            await server.play(await discord.FFmpegOpusAudio.from_probe(players[0]['player'],**FFMPEG_OPTIONS), after=lambda e: print('Player error: %s' % e) if e else loop.create_task(play(ctx)) if len(players)!=0 else leave(ctx))
-        except :
-            if players:
-                server.play(await discord.FFmpegOpusAudio.from_probe(players[0]['player'],**FFMPEG_OPTIONS), after=lambda e: print('Player error: %s' % e) if e else loop.create_task(play(ctx)) if len(players)!=0 else leave(ctx))
-        
-    else:
+async def play(ctx, *args, song_name=None):
+    print("znznnzn\n\n\nn\n\here")
+    print(song_name)
+    # Check if the user is in a voice channel
+    if ctx.author.voice is None or ctx.author.voice.channel is None:
+        await ctx.send("You must be in a voice channel to use this command.")
         return
+
+    # Get the voice channel of the user who invoked the command
+    channel = ctx.author.voice.channel
+
+    # Check if the bot is already connected to a voice channel
+    if ctx.voice_client is None:
+        # Connect to the voice channel
+        vc = await channel.connect()
+    else:
+        # Use the existing connection
+        vc = ctx.voice_client
+
+    # Check if arguments are provided
+    if args or song_name:
+        # Combine the arguments into a search query
+        query = '_'.join(args) if args else song_name.replace(' ', '_')
+        print(query)
+        args = query
+        try:
+        # Use your logic to search for the music track on YouTube and extract the video ID
+            video_name = '+'.join(args)
+            html = urllib.request.urlopen('https://www.youtube.com/results?search_query=' + video_name)
+            ids = re.findall(r"watch\s?(\S{14})", html.read().decode())
+            ids = next((id for id in ids if '?v=' in id), None)
+            video_id = ids
+
+            if video_id:
+                # Construct the YouTube URL
+                youtube_url = f'https://www.youtube.com/watch{video_id}'
+                print(youtube_url)
+                # Fetch information about the video using YTDLSource
+                source = await YTDLSource.from_url(youtube_url)
+                audio_source = discord.FFmpegPCMAudio(source['url'])
+                print(source['title'])
+                players.append({'source': audio_source, 'title': source['title']})
+
+                # If it's the first track, send a message and play the audio
+                if len(players) == 1:
+                    print(source['title'])
+                    await ctx.send(f"Now playing: {source['title']}")
+                    vc = ctx.voice_client
+                    vc.play(audio_source, after=lambda e: asyncio.run_coroutine_threadsafe(on_song_end(ctx, e), client.loop))
+
+            else:
+                await ctx.send("No valid song found.")
+
+        except Exception as e:
+            print(f"An error occurred: {e}")
+
+    elif players:#maybe useless
+        # If no arguments are provided and there are existing tracks, play the next track
+        print(players[0]['title'])
+        await ctx.send(f"Now playing: {players[0]['title']}")
+        vc = ctx.voice_client
+        vc.play(players[0]['sorce'], after=lambda e: asyncio.run_coroutine_threadsafe(on_song_end(ctx, e), client.loop))
+
+    else:
+        # If no arguments and no existing tracks, return a message
+        await ctx.send("No tracks to play.")
+async def on_song_end(ctx, error):
+    if error:
+        print(f"Error in playing the song: {error}")
+
+    # Remove the finished track
+    players.pop(0)
+
+    # Check if there are more tracks in the queue
+    if players:
+        # Play the next track in the queue
+        vc = ctx.voice_client
+        vc.play(players[0]['sorce'], after=lambda e: asyncio.run_coroutine_threadsafe(on_song_end(ctx, e), client.loop))
+        await ctx.send(f"Now playing: {players[0]['title']}")
+    else:
+        # No more tracks in the queue
+        await ctx.send("Queue is empty. Use !play <song_name> to add more songs.")
 # Definindo uma função para pular a música atual e tocar a próxima na fila
 @client.command()
 async def skip(ctx):
@@ -381,7 +482,7 @@ async def dinamicn(ctx, member, displaynome):
 async def comandos(ctx):
     channel = ctx.channel
     response = await openairesponse("1.valorantjogo <NomedoTime> - Comando que verifica a data e hora do próximo jogo de Valorant de uma equipe específica.\n2.Para usar o comando de conversação do bot, digite '.pt' seguido de uma frase ou pergunta que você deseja que o bot responda.\n3.Para usar o comando de conexão do bot ao canal de voz, digite '.join'.\n4.Para usar o comando de desconexão do bot do canal de voz, digite '.leave'\n5.No servidor, digite no chat o prefixo '.' seguido do comando 'play' e o nome da música que deseja tocar, por exemplo: .play never gonna give you up\n6. O '.skip' é responsável por pular para a próxima música da fila de reprodução no canal de voz do Discord.\n7.O 'chnick' é responsável por alterar o apelido de um membro do servidor.\n8.O comando 'resetnomes' é responsável por redefinir o apelido de todos os membros de um servidor.")
-    await channel.send(response["choices"][0]["text"])
+    await channel.send(response )
 @client.command()
 async def clear(ctx, number: int):
     number +=1
@@ -420,4 +521,4 @@ class YTDLSource(discord.PCMVolumeTransformer):
 ytdl = youtube_dl.YoutubeDL(FFMPEG_OPTIONS)
 
 # Inicia o bot.
-client.run("key")
+client.run("OTg5OTE2ODE3NjYzMzUyODY0.G2jcz8.XZeNLhk98VELcQFj0usapPhzrxI14Ejdo8FhbI")

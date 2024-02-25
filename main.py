@@ -32,12 +32,11 @@ async def brgames():
         dia = (int(now.day))
         mes = (int(now.month))
         tempo = []
-        difhoras = ((int(date["horas"][0:int(date["horas"].find(":"))])) - horas)
         for time in times:
             date,h = proximojogo(time)
             if date == "Sem partidas novas":
                 continue
-            
+            difhoras = ((int(date["horas"][0:int(date["horas"].find(":"))])) - horas)
             tempo.append((difhoras-1) if (mes == int(date['mes']) and (dia == int(date['dia']))) else 1)
 
             print("Horas:",horas, (int(date["horas"][0:(date["horas"].find(":"))]),"|Diffhour",difhoras))
@@ -52,7 +51,7 @@ async def brgames():
                 await channel.send("@everyone" + status, allowed_mentions=allowed_mentions)
                 
         
-        await asyncio.sleep((difhoras*360/1.3) if difhoras > 2 else 600)
+        await asyncio.sleep(600)
         done = 0
 @client.event
 async def on_ready():
@@ -134,51 +133,47 @@ async def valorantjogo(ctx, *, phrase):
         channel = ctx.channel
         await channel.send(date)
         return
-async def openairesponse(prompt, temp=0.9):
+async def openai_response(prompt, temp=0.9):
     # Function that sends a request to OpenAI's API to generate text.
     response = openai.Completion.create(
-        model="text-davinci-003", 
-        prompt=prompt,  
-        temperature=temp,  # Set the temperature parameter for the text generation.
-        max_tokens=1000, 
-        top_p=1,  
-        logprobs=1, 
-        frequency_penalty=0,  
-        presence_penalty=0.6, 
-        api_key="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",  # The API key for OpenAI's API.
-        stop=[" Human:", " AI"]  # Set the stop sequence for text generation.
+        model="gpt-3.5-turbo-0613",
+        prompt=prompt,
+        temperature=temp,
+        max_tokens=1000,
+        top_p=1,
+        logprobs=1,
+        frequency_penalty=0,
+        presence_penalty=0.6,
+        api_key="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",
+        stop=[" Human:", " AI"]
     )
     return response
 
-
 @client.command()
 async def pt(ctx, *, phrase):
-    # A Discord bot command that takes a phrase as input and generates a response using OpenAI's API.
-    global y
+    y = ""
     if len(y) > 3000:
         y = y[1000:len(y)]
     x = phrase
-    y = y + "Pessoa:'" + x + "'"
-    response = await openairesponse(y)
-    y = y + "Resposta do bot:'" + response['choices'][0]['text'] + "'"
+    y = y + f"Pessoa:'{x}'"
+    response = await openai_response(y)
+    y = y + f"Resposta do bot:'{response['choices'][0]['text']}'"
     channel = ctx.channel
     await channel.send(response["choices"][0]["text"])
     print(response["choices"][0]["finish_reason"])
     if response["choices"][0]["finish_reason"] == "length":
         await channel.send("Essa resposta foi limitada pela quantidade de tokens.")
-    #If the bot suggests playing a song, the play function is called to play the suggested song.
+
     if ".play" in response["choices"][0]["text"]:
-        index = (response["choices"][0]["text"].find(".play")) + 5
-        strin = (response["choices"][0]["text"][index:len(response["choices"][0]["text"])])
-        # Replace all spaces in the string with underscores.
+        index = response["choices"][0]["text"].find(".play") + 5
+        strin = response["choices"][0]["text"][index:]
         strin = strin.replace(" ", "_")
-        await play(ctx, strin)  # Play the audio corresponding to the specified string.
+        await play(ctx, strin)
         del strin
         del index
-        del ctx
         gc.collect()
         return
-
+    
 def is_connected(ctx):
     # Function that checks if the bot is connected to a voice channel.
     voice_client = discord.utils.get(client.voice_clients, guild=ctx.guild)
@@ -420,4 +415,4 @@ class YTDLSource(discord.PCMVolumeTransformer):
 ytdl = youtube_dl.YoutubeDL(FFMPEG_OPTIONS)
 
 # Inicia o bot.
-client.run("key")
+client.run("OTg5OTE2ODE3NjYzMzUyODY0.G2jcz8.XZeNLhk98VELcQFj0usapPhzrxI14Ejdo8FhbI")
